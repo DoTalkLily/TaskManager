@@ -1,7 +1,6 @@
 define(['underscore', 'ide/scripts/task'], function (_, Task) {
     /**
      * init a task manager
-     * TODO ÊÂ¼þ´¦Àí ÅÐ¶Ï²ÎÊý extend this.options ²»±ä
      * @param conf
      *            process(function:required when executing batch tasks)
      * @constructor
@@ -36,7 +35,7 @@ define(['underscore', 'ide/scripts/task'], function (_, Task) {
         if (typeof options !== 'object') {
             throw new Error('Expected the options to be an object.');
         }
-        if (isNull(id)) {
+        if (_.isEmpty(id)) {
             throw new Error('Expected the options with id attributes.');
         }
         if ((task = self.queue[id])) {//task already exists
@@ -59,7 +58,7 @@ define(['underscore', 'ide/scripts/task'], function (_, Task) {
         if (typeof options !== 'object') {
             throw new Error('Expected the options to be an object.');
         }
-        if (isNull(id)) {
+        if (_.isEmpty(id)) {
             throw new Error('Expected the options with id attributes.');
         }
         if (self.queue[id]) {
@@ -134,9 +133,9 @@ define(['underscore', 'ide/scripts/task'], function (_, Task) {
      */
     proto._dispatchResult = function (res) {
         var self = this, task;
-        if (isNull(res) || res.rCode !== 0 || isNull(res.data)) return;
+        if (_.isEmpty(res) || res.rCode !== 0 || _.isEmpty(res.data)) return;
         _.each(res.data, function (result) {
-            if (!isNull(result)) {
+            if (!_.isEmpty(result)) {
                 task = self.getBatchTask(result.id);
                 if (task && !task.processBatchResponse(result)) {
                     console.log('task id:'+task.id+" removed from queue");
@@ -160,7 +159,7 @@ define(['underscore', 'ide/scripts/task'], function (_, Task) {
         task = new Task(options.id,options);
         options.init && (_.isFunction(options.init)) && (func = options.init());
 
-        if (!isNull(func) && isPromise(func)) {
+        if (!_.isEmpty(func) && isPromise(func)) {
             func.then(function (res) {
                 if (options.afterInit && _.isFunction(options.afterInit) && !options.afterInit(res)) {
                     return;
@@ -168,7 +167,7 @@ define(['underscore', 'ide/scripts/task'], function (_, Task) {
                 task.isInited = true;
                 self._addBatchTask(options.id, task);
             });
-        } else {//TODO init ·µ»Ø´íÎóÐÅÏ¢Çé¿ö
+        } else {//TODO init ï¿½ï¿½ï¿½Ø´ï¿½ï¿½ï¿½ï¿½ï¿½Ï¢ï¿½ï¿½ï¿½
             if (options.afterInit && _.isFunction(options.afterInit) && !options.afterInit()) {
                 return;
             }
@@ -200,7 +199,7 @@ define(['underscore', 'ide/scripts/task'], function (_, Task) {
         if (typeof options !== 'object') {
             throw new Error('Expected the options to be an object.');
         }
-        if (isNull(options.id)) {
+        if (_.isEmpty(options.id)) {
             throw new Error('Expected the options with id attributes.');
         }
         this.tasks[options.id] = new Task(options.id, options);
@@ -221,7 +220,7 @@ define(['underscore', 'ide/scripts/task'], function (_, Task) {
         if (typeof options !== 'object') {
             throw new Error('Expected the options to be an object.');
         }
-        if (isNull(options.id) || !(options.id instanceof Array) || options.id.length === 0) {
+        if (_.isEmpty(options.id) || !(options.id instanceof Array) || options.id.length === 0) {
             throw new Error('Expected the options with id array attributes.');
         }
         taskList = {};
@@ -251,7 +250,7 @@ define(['underscore', 'ide/scripts/task'], function (_, Task) {
      * continue task
      */
     proto.continueTask = function (options) {
-        if (isNull(options.id)) {
+        if (_.isEmpty(options.id)) {
             throw new Error('Expected the options with id and type attributes.');
         }
         if (!this.getTask(options.id)) {
@@ -317,7 +316,7 @@ define(['underscore', 'ide/scripts/task'], function (_, Task) {
         var id = options.id, task,
             self = this;
 
-        if (isNull(id)) {
+        if (_.isEmpty(id)) {
             throw new Error('Expected id');
         }
         if (action && !_.isFunction(self.getTask(id)[action])) {
@@ -339,7 +338,7 @@ define(['underscore', 'ide/scripts/task'], function (_, Task) {
     proto._operateTaskList = function (options, action) {
         var self = this, ids = options.id, task, taskIdList = [];
 
-        if (!isNull(ids)) {
+        if (!_.isEmpty(ids)) {
             if (!(ids instanceof Array) || ids.length === 0) {
                 throw new Error('Expected array of ids');
             }
@@ -363,11 +362,7 @@ define(['underscore', 'ide/scripts/task'], function (_, Task) {
         }
         return taskIdList;
     };
-
-    function isNull(value) {
-        return value === "" || value === undefined || value === null;
-    }
-
+    
     function isPromise(obj) {
         return 'function' == typeof obj.then;
     }

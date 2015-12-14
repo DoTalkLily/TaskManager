@@ -29,16 +29,16 @@ define(['underscore'], function (_) {
      * run the task with init request,which maybe different from other request
      * @param options
      */
-    proto.run = function (options) {
+    proto.init = function (options) {
        var self = this,func;
        if(self.isRunning) return;
        _.extend(self.options,options);
 
-       if(self.options.run){
+       if(self.options.init){
            if(!_.isFunction(self.options.run)){
                throw new Error('Run function invalid');
            }
-           func = self.options.run();
+           func = self.options.init();
            if(isPromise(func)) {
                func.then(function (res) {
                    self.isRunning = true;
@@ -59,7 +59,7 @@ define(['underscore'], function (_) {
 
     proto.callTimer = function () {
         var self = this,
-            func = self.options.timer();
+            func = self.options.pulling();
 
         if(isPromise(func)){
             func.then(function(res){
