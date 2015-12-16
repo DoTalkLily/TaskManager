@@ -40,27 +40,30 @@ define(['underscore'], function (_) {
            }
            func = self.options.init();
            if(isPromise(func)) {
-               func.then(function (res) {
+               func.then(function () {
                    self.isRunning = true;
                    self.callTimer();
                });
                return;
            }
        }
-       self.callTimer();
+       self.start();
     };
 
-    proto.continue = function (options) {
+    proto.restart = function (options) {
         var self = this;
         if(self.isRunning) return;
         _.extend(self.options,options);
-        self.callTimer();
+        self.start();
     };
 
-    proto.callTimer = function () {
+    proto.start = function () {
         var self = this,
-            func = self.options.pulling();
-
+            func;
+        if(!_.isFunction(self.options.pulling())){
+            throw new Error('Run function invalid');
+        }
+        func = self.options.pulling();
         if(isPromise(func)){
             func.then(function(res){
                 self._processResponse(res);
@@ -71,38 +74,37 @@ define(['underscore'], function (_) {
     };
 
     proto._processResponse = function(res){
-        var self = this;
+        var self = this,shouldContinue = true;
         clearTimeout(self.timer);
-        _.each(self.callbacks,function(callback){
-            if(_.isFunction(callback) && !callback(res)){
-                self.isRunning = false;
-                return false;
-            }
-        });
+        if(_.isEmpty(self.callbacks)){//no callbacks,try publish
+            PubSub.publish(self.id,res);
+        }else{
+            _.each(self.callbacks,function(callback){
+                if(_.isFunction(callback) && !callback(res)){
+                    shouldContinue =  false;
+                }
+            });
+        }
+        if(!shouldContinue){
+            self.isRunning = false;
+            return false;
+        }
         self.timer = setTimeout(function () {
-            self.callTimer();
+            self.start();
         }, self.options.interval || self.interval);
-    }
+    };
 
     proto.kill = function (options) {
         var self = this;
         if(!self.isRunning) return;
         _.extend(self.options,options);
 
-        if(!_.isFunction(self.options.kill)){
-            throw new Error('Kill function not defined.');
+        if(_.isFunction(self.options.kill)){ //if kill function provided
+            self.options.kill()
         }
 
-        if(isPromise(self.options.kill)){
-            self.options.kill().then(function(res){
-                self.isRunning = false;
-                clearTimeout(this.timer);
-            })
-        }else{
-            self.options.kill();
-            self.isRunning = false;
-            clearTimeout(this.timer);
-        }
+        self.isRunning = false;
+        clearTimeout(this.timer);
     };
 
     proto.pause = function (options) {
@@ -111,30 +113,26 @@ define(['underscore'], function (_) {
         _.extend(self.options,options);
 
         if(!_.isFunction(self.options.pause)){
-            throw new Error('Pause function not defined.');
+            self.options.pause()
         }
 
-        if(isPromise(self.options.pause)){
-            self.options.pause().then(function(res){
-                self.isRunning = false;
-                clearTimeout(this.timer);
-            })
-        }else{
-            self.options.pause();
-            self.isRunning = false;
-            clearTimeout(this.timer);
-        }
+        self.isRunning = false;
+        clearTimeout(this.timer);
     };
 
     proto.processBatchResponse = function(res){
         var self = this,result = true;
 
-        _.each(self.callbacks,function(callback){
-            if(_.isFunction(callback) && !callback(res)){
-                self.isRunning = false;
-                result = false;
-            }
-        });
+        if(_.isEmpty(self.callbacks)){//no callbacks,try publish
+            PubSub.publish(self.id,res);
+        }else {
+            _.each(self.callbacks, function (callback) {
+                if (_.isFunction(callback) && !callback(res)) {
+                    self.isRunning = false;
+                    result = false;
+                }
+            });
+        }
         return result;
     };
 
@@ -143,7 +141,7 @@ define(['underscore'], function (_) {
             throw new Error('Callback should be a function');
         }
         this.callbacks.push(callback);
-    }
+    };
 
     /**
      * Check if `obj` is a promise.

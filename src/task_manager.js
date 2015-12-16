@@ -39,7 +39,7 @@ define(['underscore', 'ide/scripts/task'], function (_, Task) {
             throw new Error('Expected the options with id attributes.');
         }
         if ((task = self.queue[id])) {//task already exists
-            task.addCallback(options.callback);
+            (options.callback) && task.addCallback(options.callback);
         } else {
             self._initBatchTask(options);//newly defined task,call init function
         }
@@ -115,6 +115,7 @@ define(['underscore', 'ide/scripts/task'], function (_, Task) {
         if (_.isEmpty(this.queue)) {
             clearTimeout(this.timer);
         }
+        PubSub.publish('killed_'+id,res);
     };
 
     /**
@@ -124,7 +125,7 @@ define(['underscore', 'ide/scripts/task'], function (_, Task) {
      */
     proto.getBatchTask = function (id) {
         return this.queue[id];
-    }
+    };
 
     /**
      * dispatch result to each task
@@ -138,7 +139,6 @@ define(['underscore', 'ide/scripts/task'], function (_, Task) {
             if (!_.isEmpty(result)) {
                 task = self.getBatchTask(result.id);
                 if (task && !task.processBatchResponse(result)) {
-                    console.log('task id:'+task.id+" removed from queue");
                     self.removeBatchTask(task.id);//delete task if reponse something wrong or work done
                 }
             }
@@ -256,7 +256,7 @@ define(['underscore', 'ide/scripts/task'], function (_, Task) {
         if (!this.getTask(options.id)) {
             this.createTask(options);
         }
-        return this._operateTask(options, 'continue');
+        return this._operateTask(options, 'restart');
     };
 
     /**
