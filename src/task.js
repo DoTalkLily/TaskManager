@@ -22,6 +22,7 @@ define(['underscore'], function (_) {
         this.batchParams = options.batchParams;
         this.options = options;
         (options.callback) && (this.callbacks.push(options.callback));
+        PubSub.publish('created_'+self.id,res);
     }
     var proto = Task.prototype;
 
@@ -48,6 +49,7 @@ define(['underscore'], function (_) {
            }
        }
        self.start();
+       PubSub.publish('inited_'+self.id,res);
     };
 
     proto.restart = function (options) {
@@ -55,6 +57,7 @@ define(['underscore'], function (_) {
         if(self.isRunning) return;
         _.extend(self.options,options);
         self.start();
+        PubSub.publish('restarted_'+self.id,res);
     };
 
     proto.start = function () {
@@ -71,6 +74,7 @@ define(['underscore'], function (_) {
         }else{
             self._processResponse();
         }
+        PubSub.publish('started_'+self.id,res);
     };
 
     proto._processResponse = function(res){
@@ -105,6 +109,7 @@ define(['underscore'], function (_) {
 
         self.isRunning = false;
         clearTimeout(this.timer);
+        PubSub.publish('killed_'+self.id,res);
     };
 
     proto.pause = function (options) {
@@ -118,14 +123,13 @@ define(['underscore'], function (_) {
 
         self.isRunning = false;
         clearTimeout(this.timer);
+        PubSub.publish('paused_'+self.id,res);
     };
 
     proto.processBatchResponse = function(res){
         var self = this,result = true;
 
-        if(_.isEmpty(self.callbacks)){//no callbacks,try publish
-            PubSub.publish(self.id,res);
-        }else {
+        if(!_.isEmpty(self.callbacks)){//no callbacks,try publish
             _.each(self.callbacks, function (callback) {
                 if (_.isFunction(callback) && !callback(res)) {
                     self.isRunning = false;
@@ -133,6 +137,8 @@ define(['underscore'], function (_) {
                 }
             });
         }
+
+        PubSub.publish('finished_'+self.id,res);
         return result;
     };
 

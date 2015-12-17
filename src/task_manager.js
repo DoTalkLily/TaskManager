@@ -18,31 +18,33 @@ define(['underscore', 'ide/scripts/task'], function (_, Task) {
      * @param conf
      */
     proto.setConfig = function (conf) {
+        if (typeof conf !== 'object') {
+            throw new Error('Expected the options to be an object.');
+        }
         if (conf) _.extend(this.conf, conf);
     };
 
     /**
      * init queue task
      * @param options
-     *         id (required) : id of the task,should be unique!
-     *         init (function,optional):  init task
-     *         afterInit(function,optional): callback of init
-     *         callback(function,required): callback of each response result
+     *           id (required) : id of the task,should be unique!
+     *           callback(function): callback of each response result
      */
     proto.createBatchTask = function (options) {
-        var self = this, task, id = options.id;
+        var self = this, task, id;
 
-        if (typeof options !== 'object') {
+        if (_.isEmpty(options) || !_.isObject(options)) {
             throw new Error('Expected the options to be an object.');
         }
-        if (_.isEmpty(id)) {
+        if (_.isEmpty(options.id)) {
             throw new Error('Expected the options with id attributes.');
         }
-        if ((task = self.queue[id])) {//task already exists
-            (options.callback) && task.addCallback(options.callback);
+        if ((task = self.queue[options.id])) {//task already exists
+            (options.callback) && (_.isFunction(options.callback)) && task.addCallback(options.callback);
         } else {
             self._initBatchTask(options);//newly defined task,call init function
         }
+        PubSub.publish('batch_created_'+self.id,res);
     };
 
     /**
@@ -55,7 +57,7 @@ define(['underscore', 'ide/scripts/task'], function (_, Task) {
     proto.killBatchTask = function (options) {
         var self = this, id = options.id,func;
 
-        if (typeof options !== 'object') {
+        if (_.isEmpty(options) || !_.isObject(options)) {
             throw new Error('Expected the options to be an object.');
         }
         if (_.isEmpty(id)) {
@@ -115,7 +117,7 @@ define(['underscore', 'ide/scripts/task'], function (_, Task) {
         if (_.isEmpty(this.queue)) {
             clearTimeout(this.timer);
         }
-        PubSub.publish('killed_'+id,res);
+        PubSub.publish('batch_removed_'+id,res);
     };
 
     /**
@@ -167,7 +169,7 @@ define(['underscore', 'ide/scripts/task'], function (_, Task) {
                 task.isInited = true;
                 self._addBatchTask(options.id, task);
             });
-        } else {//TODO init ���ش�����Ϣ���
+        } else {
             if (options.afterInit && _.isFunction(options.afterInit) && !options.afterInit()) {
                 return;
             }
@@ -178,7 +180,6 @@ define(['underscore', 'ide/scripts/task'], function (_, Task) {
 
     proto._addBatchTask = function (id, task) {
         var self = this;
-        console.log("task id:"+task.id+" added to queue!");
         if (_.isEmpty(self.queue)) { //if this is the first task inited start queue timer
             self.queue[id] = task;
             self.processBatchTask();
@@ -196,7 +197,7 @@ define(['underscore', 'ide/scripts/task'], function (_, Task) {
      * @returns {Task|*}
      */
     proto.createTask = function (options) {
-        if (typeof options !== 'object') {
+        if (_.isEmpty(options) || !_.isObject(options)) {
             throw new Error('Expected the options to be an object.');
         }
         if (_.isEmpty(options.id)) {
@@ -209,25 +210,28 @@ define(['underscore', 'ide/scripts/task'], function (_, Task) {
     /**
      * init a task list
      * @param options
-     *         id (required) : id of the task
-     *         type(required): type of the task
+     *         ids (required) : id of the task
      *         run(required): task mission
+     *         pause(optional): pause a task
+     *         restart(optional): restart a task
      *         kill(optional): kill mission
      *         complete(optional): response of task mission
      */
     proto.createTaskList = function (options) {
         var self = this, task, taskList;
-        if (typeof options !== 'object') {
+        if (_.isEmpty(options) || !_.isObject(options)) {
             throw new Error('Expected the options to be an object.');
         }
-        if (_.isEmpty(options.id) || !(options.id instanceof Array) || options.id.length === 0) {
+        if (!_.isArray(options.ids) || _.isEmpty(options.ids)) {
             throw new Error('Expected the options with id array attributes.');
         }
         taskList = {};
-        _.each(options.id, function (id) {
-            task = new Task(id, options);
-            self.tasks[id] = task;
-            taskList[id] = task;
+        _.each(options.ids, function (id) {
+            if(!this.getTask(id)){
+                task = new Task(id, options);
+                self.tasks[id] = task;
+                taskList[id] = task;
+            }
         });
         return taskList;
     };
@@ -247,10 +251,10 @@ define(['underscore', 'ide/scripts/task'], function (_, Task) {
     };
 
     /**
-     * continue task
+     * rstart task
      */
-    proto.continueTask = function (options) {
-        if (_.isEmpty(options.id)) {
+    proto.restartTask = function (options) {
+        if (_.isEmpty(options) || _.isEmpty(options.id)) {
             throw new Error('Expected the options with id and type attributes.');
         }
         if (!this.getTask(options.id)) {
