@@ -1,6 +1,8 @@
-define(['underscore', 'ide/scripts/task'], function (_, Task) {
+define(['underscore', 'task'], function (_, Task) {
+    'use strict';
     /**
      * init a task manager
+     * TODO 事件处理 判断参数 extend this.options 不变
      * @param conf
      *            process(function:required when executing batch tasks)
      * @constructor
@@ -18,33 +20,31 @@ define(['underscore', 'ide/scripts/task'], function (_, Task) {
      * @param conf
      */
     proto.setConfig = function (conf) {
-        if (typeof conf !== 'object') {
-            throw new Error('Expected the options to be an object.');
-        }
         if (conf) _.extend(this.conf, conf);
     };
 
     /**
      * init queue task
      * @param options
-     *           id (required) : id of the task,should be unique!
-     *           callback(function): callback of each response result
+     *         id (required) : id of the task,should be unique!
+     *         init (function,optional):  init task
+     *         afterInit(function,optional): callback of init
+     *         callback(function,required): callback of each response result
      */
     proto.createBatchTask = function (options) {
-        var self = this, task, id;
+        var self = this, task, id = options.id;
 
-        if (_.isEmpty(options) || !_.isObject(options)) {
+        if (typeof options !== 'object') {
             throw new Error('Expected the options to be an object.');
         }
-        if (_.isEmpty(options.id)) {
+        if (isNull(id)) {
             throw new Error('Expected the options with id attributes.');
         }
-        if ((task = self.queue[options.id])) {//task already exists
-            (options.callback) && (_.isFunction(options.callback)) && task.addCallback(options.callback);
+        if ((task = self.queue[id]) && options.callback) {//task already exists
+            task.addCallback(options.callback);
         } else {
             self._initBatchTask(options);//newly defined task,call init function
         }
-        PubSub.publish('batch_created_'+self.id,res);
     };
 
     /**
@@ -57,19 +57,19 @@ define(['underscore', 'ide/scripts/task'], function (_, Task) {
     proto.killBatchTask = function (options) {
         var self = this, id = options.id,func;
 
-        if (_.isEmpty(options) || !_.isObject(options)) {
+        if (typeof options !== 'object') {
             throw new Error('Expected the options to be an object.');
         }
-        if (_.isEmpty(id)) {
+        if (isNull(id)) {
             throw new Error('Expected the options with id attributes.');
         }
         if (self.queue[id]) {
             if(options.kill && _.isFunction(options.kill) && (func = options.kill())){
-                 if(isPromise(func)){
-                     func.then(function(){
-                         self.removeBatchTask(id);
-                     });
-                 }
+                if(isPromise(func)){
+                    func.then(function(){
+                        self.removeBatchTask(id);
+                    });
+                }
             }else{
                 self.removeBatchTask(id);
             }
@@ -117,7 +117,7 @@ define(['underscore', 'ide/scripts/task'], function (_, Task) {
         if (_.isEmpty(this.queue)) {
             clearTimeout(this.timer);
         }
-        PubSub.publish('batch_removed_'+id,res);
+        console.log('task id:'+id+" removed from queue");
     };
 
     /**
@@ -136,13 +136,17 @@ define(['underscore', 'ide/scripts/task'], function (_, Task) {
      */
     proto._dispatchResult = function (res) {
         var self = this, task;
-        if (_.isEmpty(res) || res.rCode !== 0 || _.isEmpty(res.data)) return;
+        if (isNull(res) || res.rCode !== 0 || isNull(res.data)) return;
         _.each(res.data, function (result) {
-            if (!_.isEmpty(result)) {
+            if (!isNull(result)) {
                 task = self.getBatchTask(result.id);
-                if (task && !task.processBatchResponse(result)) {
-                    self.removeBatchTask(task.id);//delete task if reponse something wrong or work done
+                if(task){
+                    $.publish(task.id,result);
                 }
+                //if (task && !task.processBatchResponse(result)) {
+                //    console.log('task id:'+task.id+" removed from queue");
+                //    self.removeBatchTask(task.id);//delete task if reponse something wrong or work done
+                //}
             }
         });
     };
@@ -161,7 +165,7 @@ define(['underscore', 'ide/scripts/task'], function (_, Task) {
         task = new Task(options.id,options);
         options.init && (_.isFunction(options.init)) && (func = options.init());
 
-        if (!_.isEmpty(func) && isPromise(func)) {
+        if (!isNull(func) && isPromise(func)) {
             func.then(function (res) {
                 if (options.afterInit && _.isFunction(options.afterInit) && !options.afterInit(res)) {
                     return;
@@ -169,7 +173,7 @@ define(['underscore', 'ide/scripts/task'], function (_, Task) {
                 task.isInited = true;
                 self._addBatchTask(options.id, task);
             });
-        } else {
+        } else {//TODO init 返回错误信息情况
             if (options.afterInit && _.isFunction(options.afterInit) && !options.afterInit()) {
                 return;
             }
@@ -180,6 +184,7 @@ define(['underscore', 'ide/scripts/task'], function (_, Task) {
 
     proto._addBatchTask = function (id, task) {
         var self = this;
+        console.log("task id:"+task.id+" added to queue!");
         if (_.isEmpty(self.queue)) { //if this is the first task inited start queue timer
             self.queue[id] = task;
             self.processBatchTask();
@@ -197,10 +202,10 @@ define(['underscore', 'ide/scripts/task'], function (_, Task) {
      * @returns {Task|*}
      */
     proto.createTask = function (options) {
-        if (_.isEmpty(options) || !_.isObject(options)) {
+        if (typeof options !== 'object') {
             throw new Error('Expected the options to be an object.');
         }
-        if (_.isEmpty(options.id)) {
+        if (isNull(options.id)) {
             throw new Error('Expected the options with id attributes.');
         }
         this.tasks[options.id] = new Task(options.id, options);
@@ -210,28 +215,25 @@ define(['underscore', 'ide/scripts/task'], function (_, Task) {
     /**
      * init a task list
      * @param options
-     *         ids (required) : id of the task
+     *         id (required) : id of the task
+     *         type(required): type of the task
      *         run(required): task mission
-     *         pause(optional): pause a task
-     *         restart(optional): restart a task
      *         kill(optional): kill mission
      *         complete(optional): response of task mission
      */
     proto.createTaskList = function (options) {
         var self = this, task, taskList;
-        if (_.isEmpty(options) || !_.isObject(options)) {
+        if (typeof options !== 'object') {
             throw new Error('Expected the options to be an object.');
         }
-        if (!_.isArray(options.ids) || _.isEmpty(options.ids)) {
+        if (isNull(options.id) || !(options.id instanceof Array) || options.id.length === 0) {
             throw new Error('Expected the options with id array attributes.');
         }
         taskList = {};
-        _.each(options.ids, function (id) {
-            if(!this.getTask(id)){
-                task = new Task(id, options);
-                self.tasks[id] = task;
-                taskList[id] = task;
-            }
+        _.each(options.id, function (id) {
+            task = new Task(id, options);
+            self.tasks[id] = task;
+            taskList[id] = task;
         });
         return taskList;
     };
@@ -251,16 +253,16 @@ define(['underscore', 'ide/scripts/task'], function (_, Task) {
     };
 
     /**
-     * rstart task
+     * continue task
      */
-    proto.restartTask = function (options) {
-        if (_.isEmpty(options) || _.isEmpty(options.id)) {
+    proto.continueTask = function (options) {
+        if (isNull(options.id)) {
             throw new Error('Expected the options with id and type attributes.');
         }
         if (!this.getTask(options.id)) {
             this.createTask(options);
         }
-        return this._operateTask(options, 'restart');
+        return this._operateTask(options, 'continue');
     };
 
     /**
@@ -320,7 +322,7 @@ define(['underscore', 'ide/scripts/task'], function (_, Task) {
         var id = options.id, task,
             self = this;
 
-        if (_.isEmpty(id)) {
+        if (isNull(id)) {
             throw new Error('Expected id');
         }
         if (action && !_.isFunction(self.getTask(id)[action])) {
@@ -342,7 +344,7 @@ define(['underscore', 'ide/scripts/task'], function (_, Task) {
     proto._operateTaskList = function (options, action) {
         var self = this, ids = options.id, task, taskIdList = [];
 
-        if (!_.isEmpty(ids)) {
+        if (!isNull(ids)) {
             if (!(ids instanceof Array) || ids.length === 0) {
                 throw new Error('Expected array of ids');
             }
@@ -366,7 +368,11 @@ define(['underscore', 'ide/scripts/task'], function (_, Task) {
         }
         return taskIdList;
     };
-    
+
+    function isNull(value) {
+        return value === "" || value === undefined || value === null;
+    }
+
     function isPromise(obj) {
         return 'function' == typeof obj.then;
     }

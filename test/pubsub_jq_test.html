@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script src="../lib/jquery.min.js">
+</script>
+<script>
+$(document).ready(function(){
+  $(".p2").on("myOwnEvent", function(event, showName){
+    $(this).text(showName + "! What a beautiful name!").show();
+  });
+  $(".p1").on("myOwnEvent_dev", function(event, showName){
+    $(this).text(showName + "! What a beautiful name!").show();
+  });
+  $(".on").click(function(){
+    $('p').trigger("myOwnEvent",["Anja"]);
+  });
+  $(".off").click(function(){
+    $("p").off("myOwnEvent");
+  });
+});
+</script>
+</head>
+<body>
+
+<button class='on'>Trigger custom event</button>
+<button class="off">off</button>
+<p class='p1'>Click the button to attach a customized event on this p element.</p>
+<p class='p2'>Click the button to attach a customized event on this p element.</p>
+
+</body>
+</html>

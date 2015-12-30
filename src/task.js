@@ -1,4 +1,5 @@
 define(['underscore'], function (_) {
+    'use strict';
     /**
      * task init
      * @param id unique id of this task

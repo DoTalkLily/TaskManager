@@ -1,28 +1,4 @@
-/*
-Copyright (c) 2010,2011,2012,2013,2014 Morgan Roderick http://roderick.dk
-License: MIT - http://mrgnrdrck.mit-license.org
-
-https://github.com/mroderick/PubSubJS
-*/
-(function (root, factory){
-	'use strict';
-
-    if (typeof define === 'function' && define.amd){
-        // AMD. Register as an anonymous module.
-        define(['exports'], factory);
-
-    } else if (typeof exports === 'object'){
-        // CommonJS
-        factory(exports);
-
-    }
-
-    // Browser globals
-    var PubSub = {};
-    root.PubSub = PubSub;
-    factory(PubSub);
-    
-}(( typeof window === 'object' && window ) || this, function (PubSub){
+define(function (){
 	'use strict';
 
 	var messages = {},
@@ -39,32 +15,8 @@ https://github.com/mroderick/PubSubJS
 		return false;
 	}
 
-	/**
-	 *	Returns a function that throws the passed exception, for use as argument for setTimeout
-	 *	@param { Object } ex An Error object
-	 */
-	function throwException( ex ){
-		return function reThrowException(){
-			throw ex;
-		};
-	}
-
-	function callSubscriberWithDelayedExceptions( subscriber, message, data ){
-		try {
-			subscriber( message, data );
-		} catch( ex ){
-			setTimeout( throwException( ex ), 0);
-		}
-	}
-
-	function callSubscriberWithImmediateExceptions( subscriber, message, data ){
-		subscriber( message, data );
-	}
-
-	function deliverMessage( originalMessage, matchedMessage, data, immediateExceptions ){
-		var subscribers = messages[matchedMessage],
-			callSubscriber = immediateExceptions ? callSubscriberWithImmediateExceptions : callSubscriberWithDelayedExceptions,
-			s;
+	function deliverMessage( originalMessage, matchedMessage, data){
+		var subscribers = messages[matchedMessage],s;
 
 		if ( !messages.hasOwnProperty( matchedMessage ) ) {
 			return;
@@ -72,24 +24,23 @@ https://github.com/mroderick/PubSubJS
 
 		for (s in subscribers){
 			if ( subscribers.hasOwnProperty(s)){
-				callSubscriber( subscribers[s], originalMessage, data );
+				subscribers[s](originalMessage, data );
 			}
 		}
 	}
 
-	function createDeliveryFunction( message, data, immediateExceptions ){
+	function createDeliveryFunction( message, data ){
 		return function deliverNamespaced(){
 			var topic = String( message ),
 				position = topic.lastIndexOf( '.' );
 
-			// deliver the message as it is now
-			deliverMessage(message, message, data, immediateExceptions);
+			deliverMessage(message, message, data);
 
 			// trim the hierarchy and deliver message to each level
 			while( position !== -1 ){
 				topic = topic.substr( 0, position );
 				position = topic.lastIndexOf('.');
-				deliverMessage( message, topic, data, immediateExceptions );
+				deliverMessage( message, topic, data);
 			}
 		};
 	}
@@ -108,14 +59,14 @@ https://github.com/mroderick/PubSubJS
 		return found;
 	}
 
-	function publish( message, data, sync, immediateExceptions ){
-		var deliver = createDeliveryFunction( message, data, immediateExceptions ),
+	function publish( message, data, sync){
+		var deliver,
 			hasSubscribers = messageHasSubscribers( message );
 
 		if ( !hasSubscribers ){
 			return false;
 		}
-
+        deliver = createDeliveryFunction( message, data );
 		if ( sync === true ){
 			deliver();
 		} else {
@@ -131,7 +82,7 @@ https://github.com/mroderick/PubSubJS
 	 *	Publishes the the message, passing the data to it's subscribers
 	**/
 	PubSub.publish = function( message, data ){
-		return publish( message, data, false, PubSub.immediateExceptions );
+		return publish( message, data, false);
 	};
 
 	/**
@@ -141,7 +92,7 @@ https://github.com/mroderick/PubSubJS
 	 *	Publishes the the message synchronously, passing the data to it's subscribers
 	**/
 	PubSub.publishSync = function( message, data ){
-		return publish( message, data, true, PubSub.immediateExceptions );
+		return publish( message, data, true);
 	};
 
 	/**
@@ -242,4 +193,6 @@ https://github.com/mroderick/PubSubJS
 
 		return result;
 	};
-}));
+	window.PubSub = PubSub;
+	return PubSub;
+});
