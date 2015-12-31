@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+    <meta charset="UTF-8">
+    <title>pubsub test</title>
+    <script type="text/javascript" src="dest/bundle.js"></script>
+</head>
+<body>
+<button id="publish-thing">Test</button>
+<script type="text/javascript">
+    window.onload = function(){
+        var taskManager = new TaskManager({
+            interval: 20000,     // 轮训时间间隔
+            process:function(){  //轮训方法
+                setTimeout(function(){
+                    PubSub.publish('test',{ result : 'a'});
+                    taskManager.removeBatchTask(1);
+                },10000);
+            }
+        });
+        var token = PubSub.subscribe('test',function(data){
+             console.log('data got:'+data);
+        });
+        console.log('token:'+token);
+        taskManager.createBatchTask({ id: 1 });
+    };
+</script>
+</body>
+</html>
