@@ -8,7 +8,7 @@ $(document).ready(function(){
   $(".p2").on("myOwnEvent", function(event, showName){
     $(this).text(showName + "! What a beautiful name!").show();
   });
-  $(".p1").on("myOwnEvent_dev", function(event, showName){
+  $(".p1").on("myOwnEvent.dev", function(event, showName){
     $(this).text(showName + "! What a beautiful name!").show();
   });
   $(".on").click(function(){

@@ -1,6 +1,6 @@
 'use strict';
 var _ = require('../lib/underscore');
-var PubSub = require('./pubsub_pure');
+var PubSub = require('./pubsub');
 /**
  * task init
  * @param id unique id of this task

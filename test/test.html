@@ -3,14 +3,14 @@
 <head lang="en">
     <meta charset="UTF-8">
     <title>pubsub test</title>
-    <script type="text/javascript" src="dest/bundle.js"></script>
+    <script type="text/javascript" src="../dest/bundle.js"></script>
 </head>
 <body>
 <button id="publish-thing">Test</button>
 <script type="text/javascript">
     window.onload = function(){
         var taskManager = new TaskManager({
-            interval: 20000,     // 轮训时间间隔
+            interval: 10000,     // 轮训时间间隔
             process:function(){  //轮训方法
                 setTimeout(function(){
                     PubSub.publish('test',{ result : 'a'});

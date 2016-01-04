@@ -1,7 +1,7 @@
 'use strict';
 var _ = require('../lib/underscore');
 var Task = require('./task');
-var PubSub = require('./pubsub_pure');
+var PubSub = require('./pubsub');
 /**
  * init a task manager
  * @param conf
@@ -149,11 +149,13 @@ proto._dispatchResult = function (res) {
     _.each(res.data, function (result) {
         if (!isNull(result)) {
             task = self.getBatchTask(result.id);
-
-            if (task && !task.processBatchResponse(result)) {
-                console.log('task id:'+task.id+" removed from queue");
-                self.removeBatchTask(task.id);//delete task if reponse something wrong or work done
-            }else{
+            if(task){
+                if(!_.isEmpty(task.callbacks)){ //if callback function is registed
+                    if(!task.processBatchResponse(result)){
+                        self.removeBatchTask(task.id);//delete task if reponse something wrong or work done
+                        return;
+                    }
+                }
                 PubSub.publish(task.id,result);
             }
         }
@@ -182,7 +184,7 @@ proto._initBatchTask = function (options) {
             task.isInited = true;
             self._addBatchTask(options.id, task);
         });
-    } else {//TODO init 返回错误信息情况
+    } else {//TODO init 杩斿洖閿欒淇℃伅鎯呭喌
         if (options.afterInit && _.isFunction(options.afterInit) && !options.afterInit()) {
             return;
         }
