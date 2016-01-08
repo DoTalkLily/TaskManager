@@ -135,7 +135,7 @@ proto.removeBatchTask = function (id) {
  * @returns {*}
  */
 proto.getBatchTask = function (id) {
-    return this.queue[id];
+    return _.isEmpty(id) ? this.queue : this.queue[id];
 };
 
 /**
@@ -208,9 +208,11 @@ proto._addBatchTask = function (id, task) {
 /**
  * init single task
  * @param options
+ *         interval(optional):interval of executing a task
+ *         id (required) : id of the task
+ *         init(optional): init work before executing the task
  *         run(required): task mission
  *         kill(optional): kill mission
- *         complete(optional): response of task mission
  * @returns {Task|*}
  */
 proto.createTask = function (options) {
@@ -220,29 +222,31 @@ proto.createTask = function (options) {
     if (isNull(options.id)) {
         throw new Error('Expected the options with id attributes.');
     }
+    if (this.getTask(options.id)) return null;
     this.tasks[options.id] = new Task(options.id, options);
+    console.log('task '+options.id+' added to queue');
     return this.tasks[options.id];
 };
 
 /**
  * init a task list
  * @param options
- *         id (required) : id of the task
- *         type(required): type of the task
+ *         interval(optional):interval of executing a task
+ *         ids (required) : ids of the task
+ *         init(optional): init work before executing the task
  *         run(required): task mission
  *         kill(optional): kill mission
- *         complete(optional): response of task mission
  */
 proto.createTaskList = function (options) {
     var self = this, task, taskList;
-    if (typeof options !== 'object') {
+    if (!_.isObject(options)) {
         throw new Error('Expected the options to be an object.');
     }
-    if (isNull(options.id) || !(options.id instanceof Array) || options.id.length === 0) {
+    if (isNull(options.ids) || !_.isArray(options.ids)|| options.ids.length === 0) {
         throw new Error('Expected the options with id array attributes.');
     }
     taskList = {};
-    _.each(options.id, function (id) {
+    _.each(options.ids, function (id) {
         task = new Task(id, options);
         self.tasks[id] = task;
         taskList[id] = task;
@@ -254,14 +258,24 @@ proto.createTaskList = function (options) {
  * run one task
  */
 proto.runTask = function (options) {
-    return this._operateTask(options, 'run');
+    if(_.isObject(options) && _.isEmpty(options.id)){
+        throw new Error('Expected the options with an id.');
+    }
+    if(_.isObject(options)){
+        return this._operateTask(options, 'start');
+    }else{
+        if(_.isEmpty(options)){
+            throw new Error('Expected the options with an id.');
+        }
+        return this._operateTask({id:options},'start');
+    }
 };
 
 /**
  * run task list
  */
 proto.runTaskList = function (options) {
-    return this._operateTaskList(options, 'run');
+    return this._operateTaskList(options, 'start');
 };
 
 /**
@@ -277,6 +291,12 @@ proto.continueTask = function (options) {
     return this._operateTask(options, 'continue');
 };
 
+/**
+ * pause task list
+ */
+proto.continueTaskList = function (options) {
+    return this._operateTaskList(options, 'continue');
+};
 /**
  * pause a task
  */
@@ -295,7 +315,7 @@ proto.pauseTaskList = function (options) {
  * kill a task
  */
 proto.killTask = function (options) {
-    var id = self._operateTask(options, 'kill');
+    var id = this._operateTask(options, 'kill');
     this.removeTask(id);
 };
 
@@ -320,8 +340,9 @@ proto.removeTask = function (id) {
     if (!(task = this.tasks[id])) {
         return;
     }
-    task.isRunning && task.kill();
+    task.isRunning && task.kill({ id: id});
     delete this.tasks[id];
+    console.log('task '+id+' removed from queue');
 };
 
 /**

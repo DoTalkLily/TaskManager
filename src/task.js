@@ -9,8 +9,8 @@ var PubSub = require('./pubsub');
  *          callback(function,optional): callback of each response
  *          callbacks(array of function,optional): callbacks of each response
  *          batchParams(optional): params when executed in task queue
- *          run(function,optional): init task function
- *          timer(function,optional): execute in each interval
+ *          init(function,optional): init task function
+ *          run(function,optional): execute in each interval
  *          pause(function,optional): pause function
  *          kill(function,optional): kill function
  * @constructor
@@ -38,14 +38,14 @@ proto.init = function (options) {
    _.extend(self.options,options);
 
    if(self.options.init){
-       if(!_.isFunction(self.options.run)){
+       if(!_.isFunction(self.options.init)){
            throw new Error('Run function invalid');
        }
        func = self.options.init();
        if(isPromise(func)) {
            func.then(function () {
                self.isRunning = true;
-               self.callTimer();
+               self.start();
            });
            return;
        }
@@ -64,10 +64,11 @@ proto.restart = function (options) {
 proto.start = function () {
     var self = this,
         func;
-    if(!_.isFunction(self.options.pulling())){
+    self.isRunning = true;
+    if(!_.isFunction(self.options.run)){
         throw new Error('Run function invalid');
     }
-    func = self.options.pulling();
+    func = self.options.run();
     if(isPromise(func)){
         func.then(function(res){
             self._processResponse(res);
@@ -99,12 +100,12 @@ proto._processResponse = function(res){
 };
 
 proto.kill = function (options) {
-    var self = this;
+    var self = this,id = options.id;
     if(!self.isRunning) return;
     _.extend(self.options,options);
 
     if(_.isFunction(self.options.kill)){ //if kill function provided
-        self.options.kill()
+        self.options.kill(options)
     }
 
     self.isRunning = false;

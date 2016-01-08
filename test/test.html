@@ -18,7 +18,8 @@
                 },10000);
             }
         });
-        var token = PubSub.subscribe('test',function(data){
+        var token = PubSub.subscribe('test',function(e,data){
+            console.log('event:'+e);
              console.log('data got:'+data);
         });
         console.log('token:'+token);
