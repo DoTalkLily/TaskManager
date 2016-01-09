@@ -80,6 +80,7 @@ If is provided, it could be some work before killing an task.
       * kill(optional): kill mission
      
     return : The task just created.
+
   + createTaskList
     
     Create a list of tasks. The configuration of the task list is passed. Including:
@@ -101,21 +102,21 @@ If is provided, it could be some work before killing an task.
      ```sh
       taskManager.runTask([taskid1,taskid2]);
      ```
-   + pauseTask
+  + pauseTask
     
      Pause a task. Task id is required.
      ```sh
        taskManager.pauseTask(taskId);
      ```
     
-  + pauseTaskList
+ + pauseTaskList
     
     Pause a list of tasks at the same time.Array of task ids is required.
     ```sh
       taskManager.pauseTaskList([taskId1,taskId2]);
     ```   
     
-   + continueTask
+  + continueTask
     
      Wake up the task which is paused. Task id is required.
      ```sh
@@ -128,7 +129,7 @@ If is provided, it could be some work before killing an task.
     ```sh
       taskManager.continueTaskList([taskId1,taskId2]);
     ```   
-   + killTask
+  + killTask
     
      Kill the task. Task id is required.
      ```sh
@@ -140,4 +141,45 @@ If is provided, it could be some work before killing an task.
     Kill a list of tasks at the same time. Array of task ids is required.
     ```sh
       taskManager.killTaskList([taskId1,taskId2]);
-    ```   
+    ```
+
+# Batch Task
+  There is a condition when serveral tasks share one execution method.
+  ![alt text](doc/batch_task.png)
+
+  + Task manager collects the 'batchParam' of each task in the task queue. The 'batchParam' is defined when creating a batch task,which is the data each specific task may need when batch process taking place.
+  + Then execution shared by the batch tasks is called.
+  + Results are dispatched(published) to each batch task according to their task id.
+  + Each task may decide if it would attend next execution period or remove itself from the task queue according to the result they got(subscribe);
+  + After the 'interval' time, the task manager will repeat the same process again until there is no task in the task queue.
+
+
+* Api of a batch task
+  + createBatchTask
+     * option
+         * id (required) : id of the task,should be unique!
+         * init (function,optional):  init task
+         * afterInit(function,optional): callback of init
+         * callback(function,optional): callback of each response result(you may also subscribe the result)
+
+     ```sh
+        taskManager.createBatchTask({
+             id: taskId,
+             batchParams:{
+                //params for this task during execution
+             }
+        });
+     ```
+  + killBatchTask
+     * option
+         * id (required) : id of the task
+         * kill(function,optional): function before the task is killed
+
+     ```sh
+         taskManager.killBatchTask({
+              id: taskId
+         });
+
+         //or you may just pass the task id
+         taskManager.killBatchTask(taskId);
+     ```

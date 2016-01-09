@@ -1,3 +1,5 @@
+var webpack = require("webpack");
+
 module.exports = {
     entry: './src/task_manager.js',
     output: {
@@ -6,5 +8,12 @@ module.exports = {
     resolve: {
         // you can now require('file') instead of require('file.coffee')
         extensions: ['', '.js']
-    }
+    },
+    plugins: [
+        new webpack.optimize.UglifyJsPlugin({
+            compress: {
+                warnings: false
+            }
+        })
+    ]
 };

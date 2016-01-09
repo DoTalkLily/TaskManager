@@ -1,5 +1,5 @@
 'use strict';
-var _ = require('../lib/underscore');
+var _ = require('./util');
 var PubSub = require('./pubsub');
 /**
  * task init
@@ -42,7 +42,7 @@ proto.init = function (options) {
            throw new Error('Run function invalid');
        }
        func = self.options.init();
-       if(isPromise(func)) {
+       if(_.isPromise(func)) {
            func.then(function () {
                self.isRunning = true;
                self.start();
@@ -69,7 +69,7 @@ proto.start = function () {
         throw new Error('Run function invalid');
     }
     func = self.options.run();
-    if(isPromise(func)){
+    if(_.isPromise(func)){
         func.then(function(res){
             self._processResponse(res);
         });
@@ -148,14 +148,4 @@ proto.addCallback = function(callback){
     this.callbacks.push(callback);
 };
 
-/**
- * Check if `obj` is a promise.
- *
- * @param {Object} obj
- * @return {Boolean}
- * @api private
- */
-function isPromise(obj) {
-    return 'function' == typeof obj.then;
-}
 module.exports =  Task;
